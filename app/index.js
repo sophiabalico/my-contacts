@@ -1,50 +1,52 @@
-// app/index.js
 import React, { useState } from "react";
 import {
   View,
   Text,
-  Pressable,
   Modal,
   TextInput,
   FlatList,
   Alert,
   StyleSheet,
+  TouchableOpacity,
 } from "react-native";
+import { FAB, Avatar } from "react-native-paper";
 
 export default function HomeScreen() {
   const [contacts, setContacts] = useState([]); // Lista de contatos
   const [modalVisible, setModalVisible] = useState(false); // Modal visível ou não
-  const [newContact, setNewContact] = useState(""); // Texto do novo contato
+  const [newContact, setNewContact] = useState({ name: "", phone: "", category: "" }); // Dados do novo contato
   const [editIndex, setEditIndex] = useState(null); // Índice do contato em edição
 
   // Função para adicionar ou editar contato
   function addOrEditContact() {
-    if (!newContact) return; // Se o campo estiver vazio (sem espaços ou texto), não faz nada
-
-    if (editIndex === null) {
-      // Adiciona um novo contato diretamente ao estado
-      contacts.push(newContact); // Modifica o array diretamente
-    } else {
-      // Edita uma contato existente
-      contacts[editIndex] = newContact; // Atualiza o contato no índice de edição
-      setEditIndex(null); // Limpa o índice de edição
+    if (!newContact.name.trim() || !newContact.phone.trim() || !newContact.category.trim()) {
+      Alert.alert("Erro", "Todos os campos são obrigatórios!");
+      return;
     }
 
-    setContacts(contacts); // Atualiza o estado com a lista de contatos modificada
-    setNewContact(""); // Limpa o campo de texto
+    const updatedContacts = [...contacts];
+    if (editIndex === null) {
+      updatedContacts.push(newContact); // Adiciona um novo contato
+    } else {
+      updatedContacts[editIndex] = newContact; // Edita o contato existente
+      setEditIndex(null);
+    }
+
+    setContacts(updatedContacts); // Atualiza a lista de contatos
+    setNewContact({ name: "", phone: "", category: "" }); // Limpa os campos
     setModalVisible(false); // Fecha o modal
   }
 
   // Função para confirmar exclusão de contato
   function confirmDelete(index) {
-    Alert.alert("Excluir contato?", `Remover "${contacts[index]}"?`, [
+    Alert.alert("Excluir contato?", `Remover "${contacts[index].name}"?`, [
       { text: "Cancelar", style: "cancel" },
       {
         text: "Excluir",
         style: "destructive",
         onPress: () => {
-          contacts.splice(index, 1); // Remove a contato diretamente do array
-          setContacts(contacts); // Atualiza o estado com a lista modificada
+          const updatedContacts = contacts.filter((_, i) => i !== index); // Remove o contato pelo índice
+          setContacts(updatedContacts); // Atualiza a lista de contatos
         },
       },
     ]);
@@ -52,52 +54,61 @@ export default function HomeScreen() {
 
   // Função para abrir o modal em modo de edição
   function openEditModal(index) {
-    setNewContact(contacts[index]); // Carrega o texto do contato no campo de edição
+    setNewContact(contacts[index]); // Carrega os dados do contato no formulário
     setEditIndex(index); // Define o índice do contato a ser editado
     setModalVisible(true); // Abre o modal
   }
 
   return (
     <View style={styles.container}>
-      {/* Botão para abrir o modal */}
-      <Pressable
-        onPress={() => {
-          setNewContact("");
-          setEditIndex(null);
-          setModalVisible(true);
-        }}
-        style={styles.addButton}
-      >
-        <Text style={styles.addButtonText}>＋ Novo Contato</Text>
-      </Pressable>
-
       {/* Lista de contatos */}
       <FlatList
         data={contacts}
         keyExtractor={(_, i) => String(i)} // Identificador único para cada item
         renderItem={({ item, index }) => (
           <View style={styles.taskItemContainer}>
-            <Text style={styles.taskItem}>{item}</Text>
+            {/* Ícone com a inicial do nome do contato */}
+            <Avatar.Text
+              size={40}
+              label={item.name[0]} // Exibe a inicial do nome
+              style={{ backgroundColor: "#7209b7", marginRight: 10 }}
+            />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.taskItem}>{item.name}</Text>
+              <Text style={styles.taskSubItem}>{item.phone}</Text>
+              <Text style={styles.taskSubItem}>{item.category}</Text>
+            </View>
             <View style={styles.taskButtons}>
               {/* Botões para editar e excluir */}
-              <Pressable
+              <Text
                 onPress={() => openEditModal(index)} // Abre o modal para editar
                 style={[styles.taskButton, styles.editButton]}
               >
-                <Text style={styles.buttonText}>✏️</Text>
-              </Pressable>
-              <Pressable
+                ✏️
+              </Text>
+              <Text
                 onPress={() => confirmDelete(index)} // Exclui o contato
                 style={[styles.taskButton, styles.deleteButton]}
               >
-                <Text style={styles.buttonText}>🗑️</Text>
-              </Pressable>
+                🗑️
+              </Text>
             </View>
           </View>
         )}
         ListEmptyComponent={
           <Text style={styles.emptyText}>Nenhum contato ainda!</Text>
         }
+      />
+
+      {/* Botão flutuante para adicionar contato */}
+      <FAB
+        style={styles.fab}
+        icon="plus"
+        onPress={() => {
+          setNewContact({ name: "", phone: "", category: "" });
+          setEditIndex(null);
+          setModalVisible(true);
+        }}
       />
 
       {/* Modal para adicionar ou editar contato */}
@@ -111,25 +122,55 @@ export default function HomeScreen() {
           <View style={styles.modalContent}>
             <Text style={{ marginBottom: 8 }}>
               {editIndex === null
-                ? "Digite seu novo contato:"
-                : "Edite o contato:"}
+                ? "Digite os dados do novo contato:"
+                : "Edite os dados do contato:"}
             </Text>
             <TextInput
-              value={newContact} // O valor do campo de texto é controlado pelo estado `newContact`
-              onChangeText={setNewContact} // Atualiza o estado com o novo texto
-              placeholder="Ex: Sophia Balico"
+              value={newContact.name} // Valor do campo de texto é controlado pelo estado `newContact`
+              onChangeText={(text) => setNewContact({ ...newContact, name: text })}
+              placeholder="Nome"
               style={styles.input}
             />
-            <Pressable onPress={addOrEditContact} style={{ marginBottom: 8 }}>
-              <Text style={{ color: "#6200ee", textAlign: "center" }}>
-                {editIndex === null ? "Adicionar" : "Salvar alterações"}
-              </Text>
-            </Pressable>
-            <Pressable onPress={() => setModalVisible(false)}>
-              <Text style={{ color: "#999", textAlign: "center" }}>
-                Cancelar
-              </Text>
-            </Pressable>
+            <TextInput
+              value={newContact.phone}
+              onChangeText={(text) => setNewContact({ ...newContact, phone: text })}
+              placeholder="Telefone"
+              keyboardType="phone-pad"
+              style={styles.input}
+            />
+            <View style={styles.categoryContainer}>
+              {["Trabalho", "Família", "Pessoal"].map((category) => (
+                <TouchableOpacity
+                  key={category}
+                  style={[
+                    styles.categoryButton,
+                    newContact.category === category && styles.categoryButtonSelected,
+                  ]}
+                  onPress={() => setNewContact({ ...newContact, category })}
+                >
+                  <Text
+                    style={[
+                      styles.categoryButtonText,
+                      newContact.category === category && styles.categoryButtonTextSelected,
+                    ]}
+                  >
+                    {category}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text
+              onPress={addOrEditContact}
+              style={{ color: "#7209b7", textAlign: "center", marginBottom: 8 }}
+            >
+              {editIndex === null ? "Adicionar" : "Salvar alterações"}
+            </Text>
+            <Text
+              onPress={() => setModalVisible(false)}
+              style={{ color: "#999", textAlign: "center" }}
+            >
+              Cancelar
+            </Text>
           </View>
         </View>
       </Modal>
@@ -142,20 +183,14 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
   },
-  addButton: {
-    marginBottom: 16,
-    alignSelf: "center",
-    backgroundColor: "#9d03fc", // Vermelho (Pantone 485)
-    padding: 12,
-    borderRadius: 8,
-  },
-  addButtonText: {
-    color: "#fff",
-    fontSize: 16,
+  fab: {
+    position: "absolute",
+    right: 16,
+    bottom: 16,
+    backgroundColor: "#7209b7",
   },
   taskItemContainer: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 10,
     padding: 12,
@@ -163,8 +198,12 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   taskItem: {
-    flex: 1,
     fontSize: 16,
+    fontWeight: "bold",
+  },
+  taskSubItem: {
+    fontSize: 14,
+    color: "#666",
   },
   taskButtons: {
     flexDirection: "row",
@@ -175,14 +214,10 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   editButton: {
-    backgroundColor: "#9d03fc", // Cor de edição (amarelo)
+    color: "#7209b7",
   },
   deleteButton: {
-    backgroundColor: "#9d03fc", // Cor de exclusão (vermelho)
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
+    color: "#ff0000",
   },
   emptyText: {
     textAlign: "center",
@@ -193,7 +228,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.5)", // Fundo escuro com transparência
+    backgroundColor: "rgba(0,0,0,0.5)",
   },
   modalContent: {
     width: "80%",
@@ -207,5 +242,29 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 6,
     marginBottom: 12,
+  },
+  categoryContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  categoryButton: {
+    flex: 1,
+    padding: 10,
+    marginHorizontal: 4,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 6,
+    alignItems: "center",
+  },
+  categoryButtonSelected: {
+    backgroundColor: "#7209b7",
+    borderColor: "#7209b7",
+  },
+  categoryButtonText: {
+    color: "#000",
+  },
+  categoryButtonTextSelected: {
+    color: "#fff",
   },
 });
